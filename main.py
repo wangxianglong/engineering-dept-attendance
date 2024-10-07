@@ -114,7 +114,7 @@ def generate_excel():
     #生成员工数据
     name_row_index = 3
     name_column_index = 2
-    # row_index = row_index - 5
+  
     while True:
         name_iloc = df.iloc[name_row_index, 0]
         if name_iloc == "排班说明":
@@ -160,6 +160,28 @@ def generate_excel():
 
             sheet.cell(row=row_index - 1, column=name_column_index + 1).border = border
             sheet.merge_cells(start_row=row_index - 1, start_column=name_column_index + 1, end_row=row_index - 1, end_column=name_column_index + 4)
+
+            for date_col_index in range(1,32):
+                result_iloc = df.iloc[name_row_index, date_col_index]
+                if result_iloc == "调休":
+                    name_value = df.iloc[name_row_index, 0]
+                    date_value = df.iloc[1, date_col_index]
+                    # day_value = df.iloc[2, date_col_index]
+                    for cell in sheet[2]:
+                        if cell.value == name_value:
+                            sheet.cell(row=4 + date_value, column=cell.column + 3).value = 8
+                                
+                if result_iloc == "加班":
+                    name_value = df.iloc[name_row_index, 0]
+                    date_value = df.iloc[1, date_col_index]
+                    day_value = df.iloc[2, date_col_index] 
+            
+                    for cell in sheet[2]:
+                        if cell.value == name_value:
+                            if day_value == "六" or day_value == "日":
+                                sheet.cell(row=4 + date_value, column=cell.column + 2).value = 8
+                            else:
+                                sheet.cell(row=4 + date_value, column=cell.column).value = 8
 
             name_column_index = name_column_index + 4
             name_row_index = name_row_index + 1
