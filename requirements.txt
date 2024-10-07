@@ -1,4 +1,4 @@
 pandas
-tkinter
+tk
 tkcalendar
 openpyxl

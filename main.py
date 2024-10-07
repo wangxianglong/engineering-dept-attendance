@@ -27,15 +27,13 @@ def generate_excel():
     workbook = Workbook()
     sheet = workbook.active
 
-# 创建实线边框的边界定义
+    # 创建实线边框的边界定义
     border = Border(left=Side(border_style='thin', color='000000'),  # 左边界，实线，颜色为黑色
                 right=Side(border_style='thin', color='000000'),  # 右边界
                 top=Side(border_style='thin', color='000000'),  # 上边界
                 bottom=Side(border_style='thin', color='000000'))  # 下边界
 
-    sheet.merge_cells('A1:B1')
-    sheet.cell(row=1, column=1).value = f"工程部{selected_year}年{selected_month}月加班调休明细表"
-
+    
     sheet.merge_cells('A3:A4')
     sheet.cell(row=3, column=1).value = '星期'
     sheet.cell(row=3, column=1).alignment = Alignment(horizontal="center",vertical="center")
@@ -133,6 +131,8 @@ def generate_excel():
             cell1.font = Font(size=8)
             sheet.column_dimensions[get_column_letter(cell1.column)].width = 4
             set_cell_border(row_index,sheet,name_column_index + 1,border)
+            cell_total_1 = sheet.cell(row=row_index - 4, column=name_column_index + 1) 
+            cell_total_1.value = f'=SUM({cell1.column_letter}5:{cell1.column_letter}{row_index - 5})'
 
             cell2 = sheet.cell(row=4, column=name_column_index + 2)
             cell2.value = '法定加班'
@@ -141,6 +141,8 @@ def generate_excel():
             cell2.font = Font(size=8)
             sheet.column_dimensions[get_column_letter(cell2.column)].width = 4
             set_cell_border(row_index,sheet,name_column_index + 2,border)
+            cell_total_2 = sheet.cell(row=row_index - 4, column=name_column_index + 2) 
+            cell_total_2.value = f'=SUM({cell2.column_letter}5:{cell2.column_letter}{row_index - 5})'
 
             cell3 = sheet.cell(row=4, column=name_column_index + 3)
             cell3.value = '周末加班'
@@ -149,6 +151,8 @@ def generate_excel():
             cell3.font = Font(size=8)
             sheet.column_dimensions[get_column_letter(cell3.column)].width = 4
             set_cell_border(row_index,sheet,name_column_index + 3,border)
+            cell_total_3 = sheet.cell(row=row_index - 4, column=name_column_index + 3) 
+            cell_total_3.value = f'=SUM({cell3.column_letter}5:{cell3.column_letter}{row_index - 5})'
 
             cell4 = sheet.cell(row=4, column=name_column_index + 4)
             cell4.value = '调休'
@@ -157,6 +161,8 @@ def generate_excel():
             cell4.font = Font(size=8)
             sheet.column_dimensions[get_column_letter(cell4.column)].width = 4
             set_cell_border(row_index,sheet,name_column_index + 4,border)
+            cell_total_4 = sheet.cell(row=row_index - 4, column=name_column_index + 4) 
+            cell_total_4.value = f'=SUM({cell4.column_letter}5:{cell4.column_letter}{row_index - 5})'
 
             sheet.cell(row=row_index - 1, column=name_column_index + 1).border = border
             sheet.merge_cells(start_row=row_index - 1, start_column=name_column_index + 1, end_row=row_index - 1, end_column=name_column_index + 4)
@@ -167,7 +173,7 @@ def generate_excel():
                     name_value = df.iloc[name_row_index, 0]
                     date_value = df.iloc[1, date_col_index]
                     # day_value = df.iloc[2, date_col_index]
-                    for cell in sheet[2]:
+                    for cell in sheet[3]:
                         if cell.value == name_value:
                             sheet.cell(row=4 + date_value, column=cell.column + 3).value = 8
                                 
@@ -176,7 +182,7 @@ def generate_excel():
                     date_value = df.iloc[1, date_col_index]
                     day_value = df.iloc[2, date_col_index] 
             
-                    for cell in sheet[2]:
+                    for cell in sheet[3]:
                         if cell.value == name_value:
                             if day_value == "六" or day_value == "日":
                                 sheet.cell(row=4 + date_value, column=cell.column + 2).value = 8
@@ -185,6 +191,11 @@ def generate_excel():
 
             name_column_index = name_column_index + 4
             name_row_index = name_row_index + 1
+
+    sheet.cell(row=1, column=1).value = f"工程部{selected_year}年{selected_month}月加班调休明细表"
+    sheet.cell(row=1, column=1).alignment = Alignment(horizontal="center",vertical="center")
+    sheet.cell(row=1, column=1).font = Font(size=18)
+    sheet.merge_cells(start_row=1, start_column=1, end_row=2, end_column=sheet.max_column)
 
     workbook.save("工程部加班调休明细表.xlsx")
 
