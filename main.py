@@ -14,11 +14,42 @@ root.geometry("600x300+50+50")
 root.title("工程部考勤记录生成器")
 
 select_path = tk.StringVar()
-
+select_path_lastmonth = tk.StringVar()
 
 def select_file():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path.set(selected_file_path)
+
+def select_file_lastmonth():
+    selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
+    select_path_lastmonth.set(selected_file_path)
+    print(get_remaining_hours("李琦琛"))
+   
+def get_remaining_hours(name) -> list:
+    data_frame = pd.read_excel(select_path_lastmonth.get())
+     
+    # 初始化行列位置
+    row = 1
+    column = None
+    
+    # 遍历DataFrame寻找内容
+    for j in range(len(data_frame.columns)):
+        if data_frame.iloc[row, j] == name:
+            column = j
+            print(f'内容找到在行：{row+1}，列：{j+1}')
+            break
+
+    # 如果需要获取具体的单元格数据
+    if column is not None:
+        row_idx = data_frame.shape[0] - 4
+        print(f'平时加班：{data_frame.iloc[row_idx, column]}')
+        print(f'周末加班：{data_frame.iloc[row_idx, column + 2]}')
+        return [data_frame.iloc[row_idx, column] if not pd.isna(data_frame.iloc[row_idx, column]) else "",
+                data_frame.iloc[row_idx, column + 1] if not pd.isna(data_frame.iloc[row_idx, column + 1]) else "",
+                data_frame.iloc[row_idx, column + 2] if not pd.isna(data_frame.iloc[row_idx, column + 2]) else "",
+                data_frame.iloc[row_idx, column + 3] if not pd.isna(data_frame.iloc[row_idx, column + 3]) else ""]
+    
+    return ["","","",""]
 
 def generate_excel():
     selected_month = month_combo.get().replace('月','')
@@ -167,6 +198,7 @@ def generate_excel():
             sheet.cell(row=row_index - 1, column=name_column_index + 1).border = border
             sheet.merge_cells(start_row=row_index - 1, start_column=name_column_index + 1, end_row=row_index - 1, end_column=name_column_index + 4)
 
+            rest_hours = 0 #一个员工当月的调休小时数
             for date_col_index in range(1,32):
                 result_iloc = df.iloc[name_row_index, date_col_index]
                 if result_iloc == "调休":
@@ -176,6 +208,7 @@ def generate_excel():
                     for cell in sheet[3]:
                         if cell.value == name_value:
                             sheet.cell(row=4 + date_value, column=cell.column + 3).value = 8
+                            rest_hours = rest_hours + 8
                                 
                 if result_iloc == "加班":
                     name_value = df.iloc[name_row_index, 0]
@@ -189,6 +222,11 @@ def generate_excel():
                             else:
                                 sheet.cell(row=4 + date_value, column=cell.column).value = 8
 
+            # 需要判断员工本月是否有调休，如果有调休需要用上个月的加班小时数减去调休小时数
+            if rest_hours > 0:
+                last_remaining_hours = get_remaining_hours(name_iloc)
+                last_remaining_hours = cal_remaining_hours(0,last_remaining_hours,rest_hours)
+
             name_column_index = name_column_index + 4
             name_row_index = name_row_index + 1
 
@@ -198,6 +236,20 @@ def generate_excel():
     sheet.merge_cells(start_row=1, start_column=1, end_row=2, end_column=sheet.max_column)
 
     workbook.save("工程部加班调休明细表.xlsx")
+
+def cal_remaining_hours(index,last_remaining_hours,rest_hours) -> list:
+    if index <= 3:
+        if last_remaining_hours[index] != "":
+            if float(last_remaining_hours[index]) >= rest_hours:
+                last_remaining_hours[index] = float(last_remaining_hours[index]) - rest_hours
+            else:
+                rest_hours = rest_hours - float(last_remaining_hours[index])
+                last_remaining_hours[index] = 0
+                cal_remaining_hours(index + 1,last_remaining_hours,rest_hours)
+        else:
+            cal_remaining_hours(index + 1,last_remaining_hours,rest_hours)
+
+    return last_remaining_hours
 
 def set_cell_border(row_index,sheet,column_index,border):
     for border_row in range(5,row_index - 1):
@@ -235,7 +287,7 @@ def get_days_of_month(year, month):
     return days_of_month
 
 if __name__ == '__main__':
-
+   
     years = list(range(2024,2055))
     year_combo = ttk.Combobox(root, values=years,width=5)
     year_combo.current(0)  # 设置默认选择为"一月"
@@ -255,10 +307,16 @@ if __name__ == '__main__':
     entry = tk.Entry(root, textvariable=select_path,width=45)
     entry.grid(column=0, row=1)
     entry.configure(state="readonly")
-    tk.Button(root, text="选择排班表", command=select_file).grid(row=1, column=2)
+    tk.Button(root, text="选择本月排班表", command=select_file).grid(row=1, column=1)
+
+    entry = tk.Entry(root, textvariable=select_path_lastmonth,width=45)
+    entry.grid(column=0, row=2)
+    entry.configure(state="readonly")
+    tk.Button(root, text="选择上个月加班调休明细表", command=select_file_lastmonth).grid(row=2, column=1)
 
     button = tk.Button(root, text="1、生成加班调休明细表",command=generate_excel)
     button.grid(row=5, column=1, sticky="EWNS",pady=50)  # 使Button在row=1, column=1的位置，sticky选项使其在水平和垂直方向上扩展
 
     root.mainloop()
+ 
 
