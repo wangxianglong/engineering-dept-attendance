@@ -7,7 +7,7 @@ from openpyxl import Workbook,load_workbook
 from openpyxl.styles import Alignment,PatternFill,Border, Side,Font
 from openpyxl.worksheet.dimensions import ColumnDimension,DimensionHolder
 from openpyxl.utils import get_column_letter
-from win32com.client import Dispatch
+# from win32com.client import Dispatch
 import os
 
 root = tk.Tk()
@@ -33,7 +33,8 @@ def get_remaining_hours(name) -> list:
     # 初始化行列位置
     row = 1
     column = None
-    
+    result_list = ["","","",""]
+
     # 遍历DataFrame寻找内容
     for j in range(len(data_frame.columns)):
         if data_frame.iloc[row, j] == name:
@@ -44,12 +45,23 @@ def get_remaining_hours(name) -> list:
     # 如果需要获取具体的单元格数据
     if column is not None:
         row_idx = data_frame.shape[0] - 4
-        return [data_frame.iloc[row_idx, column] if not pd.isna(data_frame.iloc[row_idx, column]) else "",
-                data_frame.iloc[row_idx, column + 1] if not pd.isna(data_frame.iloc[row_idx, column + 1]) else "",
-                data_frame.iloc[row_idx, column + 2] if not pd.isna(data_frame.iloc[row_idx, column + 2]) else "",
-                data_frame.iloc[row_idx, column + 3] if not pd.isna(data_frame.iloc[row_idx, column + 3]) else ""]
-    
-    return ["","","",""]
+   
+        for list_index in range(0,4):
+            if not pd.isna(data_frame.iloc[row_idx, column + list_index]):
+                last_cell_data = float(data_frame.iloc[row_idx, column + list_index])
+                if not pd.isna(data_frame.iloc[row_idx + 1, column]):
+                    cur_cell_data = float(data_frame.iloc[row_idx + 1, column + list_index])
+                    result_list[list_index] = str(cur_cell_data + last_cell_data)
+                else:
+                    result_list[list_index] = str(last_cell_data)
+            else:
+                if not pd.isna(data_frame.iloc[row_idx + 1, column + list_index]):
+                    cur_cell_data = float(data_frame.iloc[row_idx + 1, column + list_index])
+                    result_list[list_index] = str(cur_cell_data)
+                else:
+                    result_list[list_index] = ''
+    print(result_list)
+    return result_list
 
 def generate_excel():
     try:
@@ -164,7 +176,7 @@ def generate_excel():
                 cell1.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
                 cell1.border = border
                 cell1.font = Font(size=8)
-                sheet.column_dimensions[get_column_letter(cell1.column)].width = 4
+                sheet.column_dimensions[get_column_letter(cell1.column)].width = 4.2
                 set_cell_border(row_index,sheet,name_column_index + 1,border)
                 cell_total_1 = sheet.cell(row=row_index - 4, column=name_column_index + 1) 
                 cell_total_1.value = f'=SUM({cell1.column_letter}5:{cell1.column_letter}{row_index - 5})'
@@ -178,7 +190,7 @@ def generate_excel():
                 cell2.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
                 cell2.border = border
                 cell2.font = Font(size=8)
-                sheet.column_dimensions[get_column_letter(cell2.column)].width = 4
+                sheet.column_dimensions[get_column_letter(cell2.column)].width = 4.2
                 set_cell_border(row_index,sheet,name_column_index + 2,border)
                 cell_total_2 = sheet.cell(row=row_index - 4, column=name_column_index + 2) 
                 cell_total_2.value = f'=SUM({cell2.column_letter}5:{cell2.column_letter}{row_index - 5})'
@@ -192,7 +204,7 @@ def generate_excel():
                 cell3.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
                 cell3.border = border
                 cell3.font = Font(size=8)
-                sheet.column_dimensions[get_column_letter(cell3.column)].width = 4
+                sheet.column_dimensions[get_column_letter(cell3.column)].width = 4.2
                 set_cell_border(row_index,sheet,name_column_index + 3,border)
                 cell_total_3 = sheet.cell(row=row_index - 4, column=name_column_index + 3) 
                 cell_total_3.value = f'=SUM({cell3.column_letter}5:{cell3.column_letter}{row_index - 5})'
@@ -206,7 +218,7 @@ def generate_excel():
                 cell4.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
                 cell4.border = border
                 cell4.font = Font(size=8)
-                sheet.column_dimensions[get_column_letter(cell4.column)].width = 4
+                sheet.column_dimensions[get_column_letter(cell4.column)].width = 4.2
                 set_cell_border(row_index,sheet,name_column_index + 4,border)
                 cell_total_4 = sheet.cell(row=row_index - 4, column=name_column_index + 4) 
                 cell_total_4.value = f'=SUM({cell4.column_letter}5:{cell4.column_letter}{row_index - 5})'
@@ -263,17 +275,21 @@ def generate_excel():
 
 def recalculate_left_hours():
     try:
-        root = os.getcwd()   
+        '''
+                root = os.getcwd()   
         # 需要先打开保存一遍Excel文件才能不到有公式的单元格
         xlApp = Dispatch("Excel.Application")
         xlApp.Visible = False
         xlBook = xlApp.Workbooks.Open(os.path.join(root, file_name))
         xlBook.Save()
         xlBook.Close()
+        '''
+
 
         # 读Excel文件用来取数据
         workbook = load_workbook(file_name,read_only=True,data_only=True)
         sheet = workbook.active
+        # workbook.close()
 
         # 读Excel文件用来写数据
         write_workbook = load_workbook(file_name)
@@ -281,23 +297,57 @@ def recalculate_left_hours():
 
         print(sheet.max_row)
         print(sheet.max_column)
+        # 把本月剩余的加班小时数抄过来
+        continue_count = 0
         for col_iter_index in range(3,sheet.max_column + 1):
+            continue_count = continue_count + 1
+            if continue_count % 4 == 0:
+                continue
             current_total_hours = sheet.cell(row = sheet.max_row - 4,column = col_iter_index).value
             # print(f'********{current_total_hours}******')
             if current_total_hours is not None and float(current_total_hours) > 0:
                 write_sheet.cell(row = write_sheet.max_row - 2,column = col_iter_index).value = current_total_hours
         
         # 计算每个员工的剩余加班小时数
-        employees_count = (sheet.max_column - 3) / 4
-        for employee_index in range(0,employees_count):
-            write_sheet.cell(row = write_sheet.max_row - 3,column = col_iter_index).value
+        employees_count = (sheet.max_column - 3) / 4 # 员工数量
+        start_col_index = 3 # 从第三列开始
+        for employee_index in range(0,int(employees_count)):
+            hours_data = list() # 员工的小时数数据
+            for j in range(0,4):
+                earch_hour = sheet.cell(row = sheet.max_row - 3,column = start_col_index + j).value
+                hours_data.append(earch_hour if earch_hour is not None else "")
+                if j == 3:
+                    rest_hour = sheet.cell(row = sheet.max_row - 4,column = start_col_index + j).value
+                    hours_data.append(rest_hour if rest_hour is not None else "")
+            
+            # 根据调休时间计算一个员工的剩余加班时间
+            hours_data = cal_remaining_hours(0,hours_data)
+            print(hours_data)
+   
+            if hours_data[4] > 0: # 上个月剩余的加班小时数不够扣调休小时数
+                for l in range(0,4):
+                    earch_hour = sheet.cell(row = sheet.max_row - 2,column = start_col_index + l).value
+                    hours_data[l] = earch_hour if earch_hour is not None else ""
+                hours_data = cal_remaining_hours(0,hours_data) # 用本月的加班小时数扣调休小时数
+                for n in range(0,3):
+                    write_sheet.cell(row = write_sheet.max_row - 2,column = start_col_index + n).value = hours_data[n]
+            else: # 上个月剩余的加班小时数够扣调休小时数,直接更新上个月剩余加班小时数
+                for m in range(0,3):
+                    write_sheet.cell(row = write_sheet.max_row - 3,column = start_col_index + m).value = hours_data[m]
+            
+
+             # 写到本月剩余加班小时数的单元格
+            # for m in range(0,3):
+            #     write_sheet.cell(row = write_sheet.max_row - 3,column = start_col_index + m).value = hours_data[m]
+            
+            start_col_index = start_col_index + 4
 
         write_workbook.save(file_name)
         messagebox.showinfo("提示", "计算剩余小时数成功")
 
     except Exception as e:
         messagebox.showerror("错误", "计算剩余小时数失败，原因：" + repr(e))
-
+        # raise e
     finally:
         write_workbook.close()
 
@@ -320,7 +370,7 @@ def cal_remaining_hours(index,last_remaining_hours) -> list:
         else:
             cal_remaining_hours(index + 1,last_remaining_hours)
 
-    return [last_remaining_hours]
+    return last_remaining_hours
 
 # 每个员工具体每一天的单元格设置边框
 def set_cell_border(row_index,sheet,column_index,border):
