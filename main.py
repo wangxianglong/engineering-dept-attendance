@@ -1,20 +1,22 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog,ttk,messagebox
 import pandas as pd
-from tkinter import ttk
 import calendar
 from datetime import datetime, timedelta
-from openpyxl import Workbook
+from openpyxl import Workbook,load_workbook
 from openpyxl.styles import Alignment,PatternFill,Border, Side,Font
 from openpyxl.worksheet.dimensions import ColumnDimension,DimensionHolder
 from openpyxl.utils import get_column_letter
+from win32com.client import Dispatch
+import os
 
 root = tk.Tk()
 root.geometry("600x300+50+50")
-root.title("工程部考勤记录生成器")
+root.title("工程/客服/保安考勤记录生成器")
 
 select_path = tk.StringVar()
 select_path_lastmonth = tk.StringVar()
+
 
 def select_file():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
@@ -36,14 +38,12 @@ def get_remaining_hours(name) -> list:
     for j in range(len(data_frame.columns)):
         if data_frame.iloc[row, j] == name:
             column = j
-            print(f'内容找到在行：{row+1}，列：{j+1}')
+            # print(f'内容找到在行：{row+1}，列：{j+1}')
             break
 
     # 如果需要获取具体的单元格数据
     if column is not None:
         row_idx = data_frame.shape[0] - 4
-        print(f'平时加班：{data_frame.iloc[row_idx, column]}')
-        print(f'周末加班：{data_frame.iloc[row_idx, column + 2]}')
         return [data_frame.iloc[row_idx, column] if not pd.isna(data_frame.iloc[row_idx, column]) else "",
                 data_frame.iloc[row_idx, column + 1] if not pd.isna(data_frame.iloc[row_idx, column + 1]) else "",
                 data_frame.iloc[row_idx, column + 2] if not pd.isna(data_frame.iloc[row_idx, column + 2]) else "",
@@ -52,205 +52,277 @@ def get_remaining_hours(name) -> list:
     return ["","","",""]
 
 def generate_excel():
-    selected_month = month_combo.get().replace('月','')
-    selected_year = year_combo.get()
-    # print(get_days_of_month(int(selected_year), int(selected_month)))
-    workbook = Workbook()
-    sheet = workbook.active
+    try:
+        selected_month = month_combo.get().replace('月','')
+        selected_year = year_combo.get()
+        # print(get_days_of_month(int(selected_year), int(selected_month)))
+        workbook = Workbook()
+        sheet = workbook.active
 
-    # 创建实线边框的边界定义
-    border = Border(left=Side(border_style='thin', color='000000'),  # 左边界，实线，颜色为黑色
-                right=Side(border_style='thin', color='000000'),  # 右边界
-                top=Side(border_style='thin', color='000000'),  # 上边界
-                bottom=Side(border_style='thin', color='000000'))  # 下边界
+        # 创建实线边框的边界定义
+        border = Border(left=Side(border_style='thin', color='000000'),  # 左边界，实线，颜色为黑色
+                    right=Side(border_style='thin', color='000000'),  # 右边界
+                    top=Side(border_style='thin', color='000000'),  # 上边界
+                    bottom=Side(border_style='thin', color='000000'))  # 下边界
+
+        
+        sheet.merge_cells('A3:A4')
+        sheet.cell(row=3, column=1).value = '星期'
+        sheet.cell(row=3, column=1).alignment = Alignment(horizontal="center",vertical="center")
+        sheet.cell(row=3, column=1).border = border
+
+        sheet.cell(row=3, column=2).value = '姓名'
+        sheet.cell(row=3, column=2).alignment = Alignment(horizontal="center",vertical="center")
+        sheet.cell(row=3, column=2).border = border
+
+        sheet.cell(row=4, column=2).value = '日期'
+        sheet.cell(row=4, column=2).alignment = Alignment(horizontal="center",vertical="center")
+        sheet.cell(row=4, column=2).border = border
+
+        df = pd.read_excel(select_path.get())
+        print(df)
+        
+        # 生成日期数据
+        for column_index in range(1,32):
+            date_iloc = df.iloc[1, column_index]  #取日期数据
+            if type(date_iloc).__name__ == "int":
+                row_index = column_index + 4
+                
+                # print(date_iloc)
+                sheet.cell(row=row_index, column=2).value = f'{selected_month}月{date_iloc}日'
+                sheet.cell(row=row_index, column=2).alignment = Alignment(horizontal="center",vertical="center")
+                sheet.cell(row=row_index, column=2).border = border
+
+                day_iloc = df.iloc[2, column_index]  #取星期几数据
+                sheet.cell(row=row_index, column=1).value = day_iloc
+                sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
+                sheet.cell(row=row_index, column=1).border = border
+
+                if day_iloc == '六' or day_iloc == '日':
+                    for col in range(1,sheet.max_column + 1):
+                        sheet.cell(row=row_index, column=col).fill = PatternFill(start_color='FFFF00', fill_type='solid')
+        
+        #生成最后几行汇总数据的第一列内容
+        row_index = row_index + 1
+        sheet.cell(row=row_index, column=1).value = f'{selected_month}月合计'
+        sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
+        sheet.cell(row=row_index, column=1).border = border
+        sheet.cell(row=row_index, column=1).font = Font(size=10, bold=True)
+        sheet.merge_cells(f'A{row_index}:B{row_index}')
+
+        row_index = row_index + 1
+        sheet.cell(row=row_index, column=1).value = f'{int(selected_month) - 1}月剩余加班小时'
+        sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
+        sheet.cell(row=row_index, column=1).border = border
+        sheet.cell(row=row_index, column=1).font = Font(size=8, bold=True)
+        sheet.merge_cells(f'A{row_index}:B{row_index}')
+
+        row_index = row_index + 1
+        sheet.cell(row=row_index, column=1).value = f'{selected_month}月剩余加班小时数'
+        sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
+        sheet.cell(row=row_index, column=1).border = border
+        sheet.cell(row=row_index, column=1).font = Font(size=8, bold=True)
+        sheet.merge_cells(f'A{row_index}:B{row_index}')
+
+        row_index = row_index + 1
+        sheet.cell(row=row_index, column=1).value = "签名"
+        sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
+        sheet.cell(row=row_index, column=1).border = border
+        sheet.cell(row=row_index, column=1).font = Font(size=11, bold=True)
+        sheet.merge_cells(f'A{row_index}:B{row_index}')
+        sheet.row_dimensions[row_index].height = 35
+
+        row_index = row_index + 1
+        sheet.cell(row=row_index, column=1).value = "制表人："
+        sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="bottom")
+        sheet.merge_cells(f'A{row_index}:B{row_index}')
+
+        sheet.cell(row=row_index, column=8).value = "项目负责人："
+        sheet.cell(row=row_index, column=8).alignment = Alignment(horizontal="left",vertical="bottom")
+        sheet.row_dimensions[row_index].height = 31.1
+
+        #生成员工数据
+        name_row_index = 3
+        name_column_index = 2
+    
+        while True:
+            name_iloc = df.iloc[name_row_index, 0]
+            if name_iloc == "排班说明":
+                break
+            else: # 一个员工的数据
+                sheet.cell(row=3, column=name_column_index + 1).value = name_iloc
+                sheet.cell(row=3, column=name_column_index + 1).alignment = Alignment(horizontal="center",vertical="center")
+                sheet.cell(row=3, column=name_column_index + 1).border = border
+                sheet.cell(row=3, column=name_column_index + 1).font = Font(size=11)
+                # 合并“姓名”的单元格
+                sheet.merge_cells(start_row=3, start_column=name_column_index + 1, end_row=3, end_column=name_column_index + 4)
+
+                last_month_hours = get_remaining_hours(name_iloc) # 获取上个月的剩余加班小时数
+
+                cell1 = sheet.cell(row=4, column=name_column_index + 1)
+                cell1.value = '平时加班'
+                cell1.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
+                cell1.border = border
+                cell1.font = Font(size=8)
+                sheet.column_dimensions[get_column_letter(cell1.column)].width = 4
+                set_cell_border(row_index,sheet,name_column_index + 1,border)
+                cell_total_1 = sheet.cell(row=row_index - 4, column=name_column_index + 1) 
+                cell_total_1.value = f'=SUM({cell1.column_letter}5:{cell1.column_letter}{row_index - 5})'
+                # 写入上个月的平时加班小时数
+                ordinary_ot_cell = sheet.cell(row=row_index - 3, column=name_column_index + 1)
+                ordinary_ot_cell.value = last_month_hours[0]
+    
+
+                cell2 = sheet.cell(row=4, column=name_column_index + 2)
+                cell2.value = '法定加班'
+                cell2.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
+                cell2.border = border
+                cell2.font = Font(size=8)
+                sheet.column_dimensions[get_column_letter(cell2.column)].width = 4
+                set_cell_border(row_index,sheet,name_column_index + 2,border)
+                cell_total_2 = sheet.cell(row=row_index - 4, column=name_column_index + 2) 
+                cell_total_2.value = f'=SUM({cell2.column_letter}5:{cell2.column_letter}{row_index - 5})'
+                # 写入上个月的法定加班小时数
+                statutory_ot_cell = sheet.cell(row=row_index - 3, column=name_column_index + 2)
+                statutory_ot_cell.value = last_month_hours[1]
+    
+
+                cell3 = sheet.cell(row=4, column=name_column_index + 3)
+                cell3.value = '周末加班'
+                cell3.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
+                cell3.border = border
+                cell3.font = Font(size=8)
+                sheet.column_dimensions[get_column_letter(cell3.column)].width = 4
+                set_cell_border(row_index,sheet,name_column_index + 3,border)
+                cell_total_3 = sheet.cell(row=row_index - 4, column=name_column_index + 3) 
+                cell_total_3.value = f'=SUM({cell3.column_letter}5:{cell3.column_letter}{row_index - 5})'
+                # 写入上个月的周末加班小时数
+                weekend_ot_cell = sheet.cell(row=row_index - 3, column=name_column_index + 3)
+                weekend_ot_cell.value = last_month_hours[2]
+
+
+                cell4 = sheet.cell(row=4, column=name_column_index + 4)
+                cell4.value = '调休'
+                cell4.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
+                cell4.border = border
+                cell4.font = Font(size=8)
+                sheet.column_dimensions[get_column_letter(cell4.column)].width = 4
+                set_cell_border(row_index,sheet,name_column_index + 4,border)
+                cell_total_4 = sheet.cell(row=row_index - 4, column=name_column_index + 4) 
+                cell_total_4.value = f'=SUM({cell4.column_letter}5:{cell4.column_letter}{row_index - 5})'
+            
+                # 合并“签名”的单元格
+                sheet.cell(row=row_index - 1, column=name_column_index + 1).border = border
+                sheet.merge_cells(start_row=row_index - 1, start_column=name_column_index + 1, end_row=row_index - 1, end_column=name_column_index + 4)
+
+                rest_hours = 0 #一个员工当月的调休小时数
+                for date_col_index in range(1,32):
+                    result_iloc = df.iloc[name_row_index, date_col_index]
+                    if result_iloc == "调休":
+                        name_value = df.iloc[name_row_index, 0]
+                        date_value = df.iloc[1, date_col_index]
+                        # day_value = df.iloc[2, date_col_index]
+                        for cell in sheet[3]:
+                            if cell.value == name_value:
+                                sheet.cell(row=4 + date_value, column=cell.column + 3).value = 8
+                                rest_hours = rest_hours + 8
+                                    
+                    if result_iloc == "加班":
+                        name_value = df.iloc[name_row_index, 0]
+                        date_value = df.iloc[1, date_col_index]
+                        day_value = df.iloc[2, date_col_index] 
+                
+                        for cell in sheet[3]:
+                            if cell.value == name_value:
+                                if day_value == "六" or day_value == "日":
+                                    sheet.cell(row=4 + date_value, column=cell.column + 2).value = 8
+                                else:
+                                    sheet.cell(row=4 + date_value, column=cell.column).value = 8
 
     
-    sheet.merge_cells('A3:A4')
-    sheet.cell(row=3, column=1).value = '星期'
-    sheet.cell(row=3, column=1).alignment = Alignment(horizontal="center",vertical="center")
-    sheet.cell(row=3, column=1).border = border
+                name_column_index = name_column_index + 4
+                name_row_index = name_row_index + 1
 
-    sheet.cell(row=3, column=2).value = '姓名'
-    sheet.cell(row=3, column=2).alignment = Alignment(horizontal="center",vertical="center")
-    sheet.cell(row=3, column=2).border = border
+        selected_type = type_combo.get()
+        content = f"{selected_type}{selected_year}年{selected_month}月加班调休明细表"
+        sheet.cell(row=1, column=1).value = content
+        sheet.cell(row=1, column=1).alignment = Alignment(horizontal="center",vertical="center")
+        sheet.cell(row=1, column=1).font = Font(size=18)
+        sheet.merge_cells(start_row=1, start_column=1, end_row=2, end_column=sheet.max_column)
+        global file_name
+        file_name = f"{content}.xlsx"
+        workbook.save(file_name)
 
-    sheet.cell(row=4, column=2).value = '日期'
-    sheet.cell(row=4, column=2).alignment = Alignment(horizontal="center",vertical="center")
-    sheet.cell(row=4, column=2).border = border
+        messagebox.showinfo("提示", "生成明细表成功")
 
-    df = pd.read_excel(select_path.get())
-    print(df)
-     
-    # 生成日期数据
-    for column_index in range(1,32):
-        date_iloc = df.iloc[1, column_index]  #取日期数据
-        if type(date_iloc).__name__ == "int":
-            row_index = column_index + 4
-            
-            # print(date_iloc)
-            sheet.cell(row=row_index, column=2).value = f'{selected_month}月{date_iloc}日'
-            sheet.cell(row=row_index, column=2).alignment = Alignment(horizontal="center",vertical="center")
-            sheet.cell(row=row_index, column=2).border = border
+    except Exception as e:
+        messagebox.showerror("错误", "生成明细表失败，请检查选择的文件内容是否正确!原因：" + repr(e))
 
-            day_iloc = df.iloc[2, column_index]  #取星期几数据
-            sheet.cell(row=row_index, column=1).value = day_iloc
-            sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
-            sheet.cell(row=row_index, column=1).border = border
+    finally:
+        workbook.close()
 
-            if day_iloc == '六' or day_iloc == '日':
-                for col in range(1,sheet.max_column + 1):
-                    sheet.cell(row=row_index, column=col).fill = PatternFill(start_color='FFFF00', fill_type='solid')
-     
-    #生成最后几行汇总数据的第一列内容
-    row_index = row_index + 1
-    sheet.cell(row=row_index, column=1).value = f'{selected_month}月合计'
-    sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
-    sheet.cell(row=row_index, column=1).border = border
-    sheet.cell(row=row_index, column=1).font = Font(size=10, bold=True)
-    sheet.merge_cells(f'A{row_index}:B{row_index}')
+def recalculate_left_hours():
+    try:
+        root = os.getcwd()   
+        # 需要先打开保存一遍Excel文件才能不到有公式的单元格
+        xlApp = Dispatch("Excel.Application")
+        xlApp.Visible = False
+        xlBook = xlApp.Workbooks.Open(os.path.join(root, file_name))
+        xlBook.Save()
+        xlBook.Close()
 
-    row_index = row_index + 1
-    sheet.cell(row=row_index, column=1).value = f'{int(selected_month) - 1}月剩余加班小时'
-    sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
-    sheet.cell(row=row_index, column=1).border = border
-    sheet.cell(row=row_index, column=1).font = Font(size=8, bold=True)
-    sheet.merge_cells(f'A{row_index}:B{row_index}')
+        # 读Excel文件用来取数据
+        workbook = load_workbook(file_name,read_only=True,data_only=True)
+        sheet = workbook.active
 
-    row_index = row_index + 1
-    sheet.cell(row=row_index, column=1).value = f'{selected_month}月剩余加班小时数'
-    sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
-    sheet.cell(row=row_index, column=1).border = border
-    sheet.cell(row=row_index, column=1).font = Font(size=8, bold=True)
-    sheet.merge_cells(f'A{row_index}:B{row_index}')
+        # 读Excel文件用来写数据
+        write_workbook = load_workbook(file_name)
+        write_sheet = write_workbook.active
 
-    row_index = row_index + 1
-    sheet.cell(row=row_index, column=1).value = "签名"
-    sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
-    sheet.cell(row=row_index, column=1).border = border
-    sheet.cell(row=row_index, column=1).font = Font(size=11, bold=True)
-    sheet.merge_cells(f'A{row_index}:B{row_index}')
-    sheet.row_dimensions[row_index].height = 35
+        print(sheet.max_row)
+        print(sheet.max_column)
+        for col_iter_index in range(3,sheet.max_column + 1):
+            current_total_hours = sheet.cell(row = sheet.max_row - 4,column = col_iter_index).value
+            # print(f'********{current_total_hours}******')
+            if current_total_hours is not None and float(current_total_hours) > 0:
+                write_sheet.cell(row = write_sheet.max_row - 2,column = col_iter_index).value = current_total_hours
+        
+        # 计算每个员工的剩余加班小时数
+        employees_count = (sheet.max_column - 3) / 4
+        for employee_index in range(0,employees_count):
+            write_sheet.cell(row = write_sheet.max_row - 3,column = col_iter_index).value
 
-    row_index = row_index + 1
-    sheet.cell(row=row_index, column=1).value = "制表人："
-    sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="bottom")
-    sheet.merge_cells(f'A{row_index}:B{row_index}')
+        write_workbook.save(file_name)
+        messagebox.showinfo("提示", "计算剩余小时数成功")
 
-    sheet.cell(row=row_index, column=8).value = "项目负责人："
-    sheet.cell(row=row_index, column=8).alignment = Alignment(horizontal="left",vertical="bottom")
-    sheet.row_dimensions[row_index].height = 31.1
+    except Exception as e:
+        messagebox.showerror("错误", "计算剩余小时数失败，原因：" + repr(e))
 
-    #生成员工数据
-    name_row_index = 3
-    name_column_index = 2
-  
-    while True:
-        name_iloc = df.iloc[name_row_index, 0]
-        if name_iloc == "排班说明":
-            break
-        else: # 一个员工的数据
-            sheet.cell(row=3, column=name_column_index + 1).value = name_iloc
-            sheet.cell(row=3, column=name_column_index + 1).alignment = Alignment(horizontal="center",vertical="center")
-            sheet.cell(row=3, column=name_column_index + 1).border = border
-            sheet.cell(row=3, column=name_column_index + 1).font = Font(size=11)
-            sheet.merge_cells(start_row=3, start_column=name_column_index + 1, end_row=3, end_column=name_column_index + 4)
+    finally:
+        write_workbook.close()
 
-            cell1 = sheet.cell(row=4, column=name_column_index + 1)
-            cell1.value = '平时加班'
-            cell1.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
-            cell1.border = border
-            cell1.font = Font(size=8)
-            sheet.column_dimensions[get_column_letter(cell1.column)].width = 4
-            set_cell_border(row_index,sheet,name_column_index + 1,border)
-            cell_total_1 = sheet.cell(row=row_index - 4, column=name_column_index + 1) 
-            cell_total_1.value = f'=SUM({cell1.column_letter}5:{cell1.column_letter}{row_index - 5})'
+'''
+ 递归用剩余加班小时数减去调休小时数
 
-            cell2 = sheet.cell(row=4, column=name_column_index + 2)
-            cell2.value = '法定加班'
-            cell2.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
-            cell2.border = border
-            cell2.font = Font(size=8)
-            sheet.column_dimensions[get_column_letter(cell2.column)].width = 4
-            set_cell_border(row_index,sheet,name_column_index + 2,border)
-            cell_total_2 = sheet.cell(row=row_index - 4, column=name_column_index + 2) 
-            cell_total_2.value = f'=SUM({cell2.column_letter}5:{cell2.column_letter}{row_index - 5})'
-
-            cell3 = sheet.cell(row=4, column=name_column_index + 3)
-            cell3.value = '周末加班'
-            cell3.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
-            cell3.border = border
-            cell3.font = Font(size=8)
-            sheet.column_dimensions[get_column_letter(cell3.column)].width = 4
-            set_cell_border(row_index,sheet,name_column_index + 3,border)
-            cell_total_3 = sheet.cell(row=row_index - 4, column=name_column_index + 3) 
-            cell_total_3.value = f'=SUM({cell3.column_letter}5:{cell3.column_letter}{row_index - 5})'
-
-            cell4 = sheet.cell(row=4, column=name_column_index + 4)
-            cell4.value = '调休'
-            cell4.alignment = Alignment(horizontal="center",vertical="center",wrap_text=True)
-            cell4.border = border
-            cell4.font = Font(size=8)
-            sheet.column_dimensions[get_column_letter(cell4.column)].width = 4
-            set_cell_border(row_index,sheet,name_column_index + 4,border)
-            cell_total_4 = sheet.cell(row=row_index - 4, column=name_column_index + 4) 
-            cell_total_4.value = f'=SUM({cell4.column_letter}5:{cell4.column_letter}{row_index - 5})'
-
-            sheet.cell(row=row_index - 1, column=name_column_index + 1).border = border
-            sheet.merge_cells(start_row=row_index - 1, start_column=name_column_index + 1, end_row=row_index - 1, end_column=name_column_index + 4)
-
-            rest_hours = 0 #一个员工当月的调休小时数
-            for date_col_index in range(1,32):
-                result_iloc = df.iloc[name_row_index, date_col_index]
-                if result_iloc == "调休":
-                    name_value = df.iloc[name_row_index, 0]
-                    date_value = df.iloc[1, date_col_index]
-                    # day_value = df.iloc[2, date_col_index]
-                    for cell in sheet[3]:
-                        if cell.value == name_value:
-                            sheet.cell(row=4 + date_value, column=cell.column + 3).value = 8
-                            rest_hours = rest_hours + 8
-                                
-                if result_iloc == "加班":
-                    name_value = df.iloc[name_row_index, 0]
-                    date_value = df.iloc[1, date_col_index]
-                    day_value = df.iloc[2, date_col_index] 
-            
-                    for cell in sheet[3]:
-                        if cell.value == name_value:
-                            if day_value == "六" or day_value == "日":
-                                sheet.cell(row=4 + date_value, column=cell.column + 2).value = 8
-                            else:
-                                sheet.cell(row=4 + date_value, column=cell.column).value = 8
-
-            # 需要判断员工本月是否有调休，如果有调休需要用上个月的加班小时数减去调休小时数
-            if rest_hours > 0:
-                last_remaining_hours = get_remaining_hours(name_iloc)
-                last_remaining_hours = cal_remaining_hours(0,last_remaining_hours,rest_hours)
-
-            name_column_index = name_column_index + 4
-            name_row_index = name_row_index + 1
-
-    sheet.cell(row=1, column=1).value = f"工程部{selected_year}年{selected_month}月加班调休明细表"
-    sheet.cell(row=1, column=1).alignment = Alignment(horizontal="center",vertical="center")
-    sheet.cell(row=1, column=1).font = Font(size=18)
-    sheet.merge_cells(start_row=1, start_column=1, end_row=2, end_column=sheet.max_column)
-
-    workbook.save("工程部加班调休明细表.xlsx")
-
-def cal_remaining_hours(index,last_remaining_hours,rest_hours) -> list:
+last_remaining_hours的前4个元素是上个月或者本月的加班小时数，第5个元素是调休小时数
+'''
+def cal_remaining_hours(index,last_remaining_hours) -> list:
     if index <= 3:
         if last_remaining_hours[index] != "":
-            if float(last_remaining_hours[index]) >= rest_hours:
-                last_remaining_hours[index] = float(last_remaining_hours[index]) - rest_hours
+            if float(last_remaining_hours[index]) >= last_remaining_hours[4]:
+                last_remaining_hours[index] = float(last_remaining_hours[index]) - last_remaining_hours[4]
+                last_remaining_hours[4] = 0
             else:
-                rest_hours = rest_hours - float(last_remaining_hours[index])
+                last_remaining_hours[4] = last_remaining_hours[4] - float(last_remaining_hours[index])
                 last_remaining_hours[index] = 0
-                cal_remaining_hours(index + 1,last_remaining_hours,rest_hours)
+                cal_remaining_hours(index + 1,last_remaining_hours)
+             
         else:
-            cal_remaining_hours(index + 1,last_remaining_hours,rest_hours)
+            cal_remaining_hours(index + 1,last_remaining_hours)
 
-    return last_remaining_hours
+    return [last_remaining_hours]
 
+# 每个员工具体每一天的单元格设置边框
 def set_cell_border(row_index,sheet,column_index,border):
     for border_row in range(5,row_index - 1):
         cell_border = sheet.cell(row=border_row, column=column_index)
@@ -260,7 +332,7 @@ def set_cell_border(row_index,sheet,column_index,border):
         cell0 = sheet.cell(row=border_row, column=1)
         if cell0.value == "六" or cell0.value == "日":
             cell_border.fill = PatternFill(start_color='FFFF00', fill_type='solid')
-            
+  
 
 def select_date_range():
     print(f"Selected month: {month_combo.get()}")
@@ -301,8 +373,11 @@ if __name__ == '__main__':
     month_combo.configure(state="readonly")
     month_combo.grid(column=1, row=0)
     
-    # select_button = tk.Button(root, text="选择年月", command=select_date_range)
-    # select_button.grid(column=2, row=0)
+    types = ["工程", "客服", "保安"]
+    type_combo = ttk.Combobox(root, values=types,width=5)
+    type_combo.current(0)  
+    type_combo.configure(state="readonly")
+    type_combo.grid(column=2, row=0)
 
     entry = tk.Entry(root, textvariable=select_path,width=45)
     entry.grid(column=0, row=1)
@@ -315,7 +390,11 @@ if __name__ == '__main__':
     tk.Button(root, text="选择上个月加班调休明细表", command=select_file_lastmonth).grid(row=2, column=1)
 
     button = tk.Button(root, text="1、生成加班调休明细表",command=generate_excel)
-    button.grid(row=5, column=1, sticky="EWNS",pady=50)  # 使Button在row=1, column=1的位置，sticky选项使其在水平和垂直方向上扩展
+    button.grid(row=5, column=1, sticky="EWNS",pady=20)  # 使Button在row=1, column=1的位置，sticky选项使其在水平和垂直方向上扩展
+
+    
+    button = tk.Button(root, text="2、计算剩余加班小时数",command=recalculate_left_hours)
+    button.grid(row=6, column=1, sticky="EWNS",pady=10)
 
     root.mainloop()
  
