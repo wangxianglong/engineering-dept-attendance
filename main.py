@@ -326,20 +326,16 @@ def recalculate_left_hours():
    
             if hours_data[4] > 0: # 上个月剩余的加班小时数不够扣调休小时数
                 for l in range(0,4):
-                    earch_hour = sheet.cell(row = sheet.max_row - 2,column = start_col_index + l).value
+                    earch_hour = sheet.cell(row = sheet.max_row - 4,column = start_col_index + l).value
                     hours_data[l] = earch_hour if earch_hour is not None else ""
                 hours_data = cal_remaining_hours(0,hours_data) # 用本月的加班小时数扣调休小时数
                 for n in range(0,3):
-                    write_sheet.cell(row = write_sheet.max_row - 2,column = start_col_index + n).value = hours_data[n]
+                    write_sheet.cell(row = write_sheet.max_row - 2,column = start_col_index + n).value = str(hours_data[n])
             else: # 上个月剩余的加班小时数够扣调休小时数,直接更新上个月剩余加班小时数
                 for m in range(0,3):
-                    write_sheet.cell(row = write_sheet.max_row - 3,column = start_col_index + m).value = hours_data[m]
+                    write_sheet.cell(row = write_sheet.max_row - 3,column = start_col_index + m).value = str(hours_data[m])
             
 
-             # 写到本月剩余加班小时数的单元格
-            # for m in range(0,3):
-            #     write_sheet.cell(row = write_sheet.max_row - 3,column = start_col_index + m).value = hours_data[m]
-            
             start_col_index = start_col_index + 4
 
         write_workbook.save(file_name)
