@@ -17,7 +17,6 @@ root.title("工程/客服/保安考勤记录生成器")
 select_path = tk.StringVar()
 select_path_lastmonth = tk.StringVar()
 
-
 def select_file():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path.set(selected_file_path)
@@ -25,7 +24,7 @@ def select_file():
 def select_file_lastmonth():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path_lastmonth.set(selected_file_path)
-    print(get_remaining_hours("李琦琛"))
+    # print(get_remaining_hours("李琦琛"))
    
 def get_remaining_hours(name) -> list:
     data_frame = pd.read_excel(select_path_lastmonth.get())
@@ -60,7 +59,7 @@ def get_remaining_hours(name) -> list:
                     result_list[list_index] = str(cur_cell_data)
                 else:
                     result_list[list_index] = ''
-    print(result_list)
+    # print(result_list)
     return result_list
 
 def generate_excel():
@@ -266,7 +265,7 @@ def generate_excel():
         workbook.save(file_name)
 
         messagebox.showinfo("提示", "生成明细表成功")
-
+        button2.config(state=tk.ACTIVE)
     except Exception as e:
         messagebox.showerror("错误", "生成明细表失败，请检查选择的文件内容是否正确!原因：" + repr(e))
 
@@ -295,8 +294,8 @@ def recalculate_left_hours():
         write_workbook = load_workbook(file_name)
         write_sheet = write_workbook.active
 
-        print(sheet.max_row)
-        print(sheet.max_column)
+        # print(sheet.max_row)
+        # print(sheet.max_column)
         # 把本月剩余的加班小时数抄过来
         continue_count = 0
         for col_iter_index in range(3,sheet.max_column + 1):
@@ -311,7 +310,7 @@ def recalculate_left_hours():
         # 计算每个员工的剩余加班小时数
         employees_count = (sheet.max_column - 3) / 4 # 员工数量
         start_col_index = 3 # 从第三列开始
-        for employee_index in range(0,int(employees_count)):
+        for _ in range(0,int(employees_count)):
             hours_data = list() # 员工的小时数数据
             for j in range(0,4):
                 earch_hour = sheet.cell(row = sheet.max_row - 3,column = start_col_index + j).value
@@ -324,14 +323,15 @@ def recalculate_left_hours():
             hours_data = cal_remaining_hours(0,hours_data)
             print(hours_data)
    
-            if hours_data[4] > 0: # 上个月剩余的加班小时数不够扣调休小时数
+            if float(hours_data[4]) > 0: # 上个月剩余的加班小时数不够扣调休小时数
                 for l in range(0,4):
                     earch_hour = sheet.cell(row = sheet.max_row - 4,column = start_col_index + l).value
                     hours_data[l] = earch_hour if earch_hour is not None else ""
                 hours_data = cal_remaining_hours(0,hours_data) # 用本月的加班小时数扣调休小时数
                 for n in range(0,3):
-                    write_sheet.cell(row = write_sheet.max_row - 2,column = start_col_index + n).value = str(hours_data[n])
-            else: # 上个月剩余的加班小时数够扣调休小时数,直接更新上个月剩余加班小时数
+                    if len(hours_data[n]) > 0 and float(hours_data[n]) > 0:
+                        write_sheet.cell(row = write_sheet.max_row - 2,column = start_col_index + n).value = str(hours_data[n])
+            else: # 上个月剩余的加班小时数够扣调休小时数,直接更新本月剩余加班小时数
                 for m in range(0,3):
                     write_sheet.cell(row = write_sheet.max_row - 3,column = start_col_index + m).value = str(hours_data[m])
             
@@ -355,12 +355,12 @@ last_remaining_hours的前4个元素是上个月或者本月的加班小时数�
 def cal_remaining_hours(index,last_remaining_hours) -> list:
     if index <= 3:
         if last_remaining_hours[index] != "":
-            if float(last_remaining_hours[index]) >= last_remaining_hours[4]:
-                last_remaining_hours[index] = float(last_remaining_hours[index]) - last_remaining_hours[4]
-                last_remaining_hours[4] = 0
+            if float(last_remaining_hours[index]) >= float(last_remaining_hours[4]):
+                last_remaining_hours[index] = str(float(last_remaining_hours[index]) - float(last_remaining_hours[4]))
+                last_remaining_hours[4] = '0'
             else:
-                last_remaining_hours[4] = last_remaining_hours[4] - float(last_remaining_hours[index])
-                last_remaining_hours[index] = 0
+                last_remaining_hours[4] = str(float(last_remaining_hours[4]) - float(last_remaining_hours[index]))
+                last_remaining_hours[index] = '0'
                 cal_remaining_hours(index + 1,last_remaining_hours)
              
         else:
@@ -435,12 +435,13 @@ if __name__ == '__main__':
     entry.configure(state="readonly")
     tk.Button(root, text="选择上个月加班调休明细表", command=select_file_lastmonth).grid(row=2, column=1)
 
-    button = tk.Button(root, text="1、生成加班调休明细表",command=generate_excel)
-    button.grid(row=5, column=1, sticky="EWNS",pady=20)  # 使Button在row=1, column=1的位置，sticky选项使其在水平和垂直方向上扩展
-
+    button1 = tk.Button(root, text="1、生成加班调休明细表",command=generate_excel)
+    button1.grid(row=5, column=1, sticky="EWNS",pady=20)  # 使Button在row=1, column=1的位置，sticky选项使其在水平和垂直方向上扩展
     
-    button = tk.Button(root, text="2、计算剩余加班小时数",command=recalculate_left_hours)
-    button.grid(row=6, column=1, sticky="EWNS",pady=10)
+    button2 = tk.Button(root, text="2、计算剩余加班小时数",command=recalculate_left_hours)
+    button2.grid(row=6, column=1, sticky="EWNS",pady=10)
+    button2.config(state=tk.DISABLED)
+
 
     root.mainloop()
  
