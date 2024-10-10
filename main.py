@@ -11,7 +11,7 @@ from openpyxl.utils import get_column_letter
 import os
 
 root = tk.Tk()
-root.geometry("550x350+50+50") # widthxheight+x+y
+root.geometry("580x350+50+50") # widthxheight+x+y
 root.title("工程/客服/保安考勤记录生成器")
 
 select_path = tk.StringVar()
@@ -438,12 +438,13 @@ if __name__ == '__main__':
     description = '''
     1、选择正确的年/月/部门。
     2、根据按钮提示选择正确的Excel文件。
-    3、先点击“1、生成加班调休明细表”按钮，然后打开生成的明细表Excel文件（如：工程2024年8月加班调休明细表.xlsx）填上每个员工每一天的加班调休小时数。（注意：最后三行汇总数据不要修改）
+    3、先点击“1、生成加班调休明细表”按钮，然后打开生成的明细表Excel文件（如：工程2024年8月加班调休明细表.xlsx）,填上每个员工每一天的加班/调休小时数。（注意：最后三行汇总数据不要修改）
     4、关闭上一步打开的明细表Excel文件，再点击“2、计算剩余加班小时数”，最后文件的数据即是正确的数据。
     '''
-    text = tk.Text(root, font=("Helvetica", 8), fg="blue",width=50,height=10)# 设定文本内容、字体、字号、字体颜色 
+    text = tk.Text(root, font=("Helvetica", 10), fg="blue",width=50,height=10)# 设定文本内容、字体、字号、字体颜色 
     text.grid(row=5, column=0, sticky="EWNS",pady=20) # sticky选项使其在水平和垂直方向上扩展
     text.insert("insert",description)
+    text['state'] = 'disabled'
 
     button1 = tk.Button(root, text="1、生成加班调休明细表",command=generate_excel)
     button1.grid(row=5, column=1, pady=20)  # 使Button在row=1, column=1的位置
