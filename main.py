@@ -13,6 +13,7 @@ import os
 root = tk.Tk()
 root.geometry("580x350+50+50") # widthxheight+x+y
 root.title("工程/客服/保安考勤记录生成器")
+root.resizable(False,False)
 
 select_path = tk.StringVar()
 select_path_lastmonth = tk.StringVar()
