@@ -21,10 +21,15 @@ select_path_lastmonth = tk.StringVar()
 def select_file():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path.set(selected_file_path)
+    if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0:
+        button1.config(state=tk.ACTIVE)
 
 def select_file_lastmonth():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path_lastmonth.set(selected_file_path)
+    if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0:
+        button1.config(state=tk.ACTIVE)
+
     # print(get_remaining_hours("李琦琛"))
    
 def get_remaining_hours(name) -> list:
@@ -449,6 +454,7 @@ if __name__ == '__main__':
 
     button1 = tk.Button(root, text="1、生成加班调休明细表",command=generate_excel)
     button1.grid(row=5, column=1, pady=20)  # 使Button在row=1, column=1的位置
+    button1.config(state=tk.DISABLED)
     
     button2 = tk.Button(root, text="2、计算剩余加班小时数",command=recalculate_left_hours)
     button2.grid(row=6, column=1, pady=10)
