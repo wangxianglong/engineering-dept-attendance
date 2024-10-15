@@ -7,31 +7,64 @@ from openpyxl import Workbook,load_workbook
 from openpyxl.styles import Alignment,PatternFill,Border, Side,Font
 from openpyxl.worksheet.dimensions import ColumnDimension,DimensionHolder
 from openpyxl.utils import get_column_letter
-# from win32com.client import Dispatch
+from win32com.client import Dispatch
 import os
+import re
 
 root = tk.Tk()
-root.geometry("580x350+50+50") # widthxheight+x+y
+root.geometry("580x400+50+50") # widthxheight+x+y
 root.title("工程/客服/保安考勤记录生成器")
 root.resizable(False,False)
 
-select_path = tk.StringVar()
-select_path_lastmonth = tk.StringVar()
+select_path = tk.StringVar() #本月排班表本地路径
+select_path_lastmonth = tk.StringVar() # 上个月加班调休明细表本地路径
+select_path_dayoff = tk.StringVar() # 本月调休表本地路径
+select_path_ot = tk.StringVar() # 本月加班表本地路径
 
 def select_file():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path.set(selected_file_path)
-    if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0:
+    if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
         button1.config(state=tk.ACTIVE)
 
 def select_file_lastmonth():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path_lastmonth.set(selected_file_path)
-    if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0:
+    if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
         button1.config(state=tk.ACTIVE)
 
     # print(get_remaining_hours("李琦琛"))
-   
+
+def select_file_dayoff():
+    selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
+    select_path_dayoff.set(selected_file_path)
+    # data_frame = pd.read_excel(select_path_dayoff.get())
+    # result = get_dayoff_data("蔡晓曼",data_frame)
+    # print(result)
+    if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
+        button1.config(state=tk.ACTIVE)
+
+def select_file_ot():
+    selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
+    select_path_ot.set(selected_file_path)
+    if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
+        button1.config(state=tk.ACTIVE)
+
+# 根据姓名获取调休记录表的数据
+def get_dayoff_data(name) -> dict:
+    data_frame = pd.read_excel(select_path_dayoff.get())
+    dayoff_dict = dict()
+    for row_index in range(data_frame.shape[0]):
+        if data_frame.iloc[row_index, 0] == name:
+            for j in range(20,len(data_frame.columns)):
+               dayoff_data = data_frame.iloc[row_index, j]
+               if not pd.isna(dayoff_data):
+                   dayoff_data = re.sub(r'[\u4e00-\u9fff]', '', dayoff_data)
+                   dayoff_dict[j - 19] = dayoff_data.replace("/","")
+            break
+    return dayoff_dict
+
+# 获取上个月加班调休明细表的剩余加班小时数
 def get_remaining_hours(name) -> list:
     data_frame = pd.read_excel(select_path_lastmonth.get())
      
@@ -96,8 +129,13 @@ def generate_excel():
         sheet.cell(row=4, column=2).alignment = Alignment(horizontal="center",vertical="center")
         sheet.cell(row=4, column=2).border = border
 
-        df = pd.read_excel(select_path.get())
+        df = pd.read_excel(select_path.get()) # 排班表的数据
         print(df)
+
+        # df_dayoff = pd.read_excel(select_path_dayoff.get()) # 当月调休记录数据
+        # df_ot = pd.read_excel(select_path_ot.get()) # 当月加班记录数据
+
+        day_array = list() # 记录每一天分别是星期几
         
         # 生成日期数据
         for column_index in range(1,32):
@@ -111,13 +149,14 @@ def generate_excel():
                 sheet.cell(row=row_index, column=2).border = border
 
                 day_iloc = df.iloc[2, column_index]  #取星期几数据
+                day_array.append(day_array)
                 sheet.cell(row=row_index, column=1).value = day_iloc
                 sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
                 sheet.cell(row=row_index, column=1).border = border
 
                 if day_iloc == '六' or day_iloc == '日':
                     for col in range(1,sheet.max_column + 1):
-                        sheet.cell(row=row_index, column=col).fill = PatternFill(start_color='FFFF00', fill_type='solid')
+                        sheet.cell(row=row_index, column=col).fill = PatternFill(start_color='FFFF00', fill_type='solid') # 把当前行的背景色设置为黄色
         
         #生成最后几行汇总数据的第一列内容
         row_index = row_index + 1
@@ -232,6 +271,15 @@ def generate_excel():
                 sheet.cell(row=row_index - 1, column=name_column_index + 1).border = border
                 sheet.merge_cells(start_row=row_index - 1, start_column=name_column_index + 1, end_row=row_index - 1, end_column=name_column_index + 4)
 
+                # 填入每个人的调休时间
+                dayoff_dict = get_dayoff_data(name_iloc)
+                if len(dayoff_dict) > 0:
+                    for key,val in dayoff_dict.items():
+                        sheet.cell(row=4 + key, column=name_column_index + 4).value = float(val)
+
+                # 填入每个人的加班时间
+
+                '''
                 rest_hours = 0 #一个员工当月的调休小时数
                 for date_col_index in range(1,32):
                     result_iloc = df.iloc[name_row_index, date_col_index]
@@ -255,10 +303,11 @@ def generate_excel():
                                     sheet.cell(row=4 + date_value, column=cell.column + 2).value = 8
                                 else:
                                     sheet.cell(row=4 + date_value, column=cell.column).value = 8
-
+                '''
     
                 name_column_index = name_column_index + 4
                 name_row_index = name_row_index + 1
+
 
         selected_type = type_combo.get()
         content = f"{selected_type}{selected_year}年{selected_month}月加班调休明细表"
@@ -270,9 +319,10 @@ def generate_excel():
         file_name = f"{content}.xlsx"
         workbook.save(file_name)
 
-        messagebox.showinfo("提示", "生成明细表成功")
+        messagebox.showinfo("提示", f"生成文件【{file_name}】成功")
         button2.config(state=tk.ACTIVE)
     except Exception as e:
+        print(e)
         messagebox.showerror("错误", "生成明细表失败，请检查选择的文件内容是否正确!原因：" + repr(e))
 
     finally:
@@ -280,16 +330,16 @@ def generate_excel():
 
 def recalculate_left_hours():
     try:
-        '''
-                root = os.getcwd()   
+ 
+        root = os.getcwd()   
         # 需要先打开保存一遍Excel文件才能不到有公式的单元格
         xlApp = Dispatch("Excel.Application")
         xlApp.Visible = False
+        xlApp.DisplayAlerts = 0
         xlBook = xlApp.Workbooks.Open(os.path.join(root, file_name))
         xlBook.Save()
         xlBook.Close()
-        '''
-
+     
 
         # 读Excel文件用来取数据
         workbook = load_workbook(file_name,read_only=True,data_only=True)
@@ -440,6 +490,16 @@ if __name__ == '__main__':
     entry.grid(column=0, row=2)
     entry.configure(state="readonly")
     tk.Button(root, text="选择上个月加班调休明细表", command=select_file_lastmonth).grid(row=2, column=1)
+
+    entry = tk.Entry(root, textvariable=select_path_dayoff,width=45)
+    entry.grid(column=0, row=3)
+    entry.configure(state="readonly")
+    tk.Button(root, text="选择本月调休记录表", command=select_file_dayoff).grid(row=3, column=1)
+
+    entry = tk.Entry(root, textvariable=select_path_ot,width=45)
+    entry.grid(column=0, row=4)
+    entry.configure(state="readonly")
+    tk.Button(root, text="选择本月加班记录表", command=select_file_ot).grid(row=4, column=1)
 
     description = '''
     1、选择正确的年/月/部门。

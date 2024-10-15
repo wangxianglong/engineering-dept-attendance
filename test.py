@@ -1,3 +1,5 @@
+import re
+
 
 def cal_remaining_hours(index,last_remaining_hours) -> list:
     if index <= 3:
@@ -28,6 +30,10 @@ for i in range(1,9):
 # result = cal_remaining_hours(0,['26.5', '', '', '5',300])
 # print(result)
 
-a = float("26.5")
-b = float("8")
-print(a + b)
+# a = float("26.5")
+# b = float("8")
+# print(a + b)
+
+s = "1.50小时/调休假"
+s1 = re.sub(r'[\u4e00-\u9fff]', '', s)
+print(s1.replace("/",""))
