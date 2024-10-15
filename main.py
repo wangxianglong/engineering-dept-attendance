@@ -323,7 +323,7 @@ def generate_excel():
         button2.config(state=tk.ACTIVE)
     except Exception as e:
         print(e)
-        messagebox.showerror("错误", "生成明细表失败，请检查选择的文件内容是否正确!原因：" + repr(e))
+        messagebox.showerror("错误", "生成文件失败，请检查选择的文件内容是否正确!原因：" + repr(e))
 
     finally:
         workbook.close()
