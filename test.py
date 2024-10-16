@@ -37,3 +37,8 @@ for i in range(1,9):
 s = "1.50小时/调休假"
 s1 = re.sub(r'[\u4e00-\u9fff]', '', s)
 print(s1.replace("/",""))
+
+current_total_hours = '=SUM(C5:C34)'
+current_total_hours = current_total_hours.replace("=SUM(","").replace(")","")
+print(current_total_hours)
+

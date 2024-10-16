@@ -12,8 +12,8 @@ import os
 import re
 
 root = tk.Tk()
-root.geometry("580x400+50+50") # widthxheight+x+y
-root.title("工程/客服/保安考勤记录生成器")
+root.geometry("580x350+50+50") # widthxheight+x+y
+root.title("工程部/客服部/保安考勤记录生成器")
 root.resizable(False,False)
 
 select_path = tk.StringVar() #本月排班表本地路径
@@ -63,6 +63,30 @@ def get_dayoff_data(name) -> dict:
                    dayoff_dict[j - 19] = dayoff_data.replace("/","")
             break
     return dayoff_dict
+
+# 根据姓名获取加班记录表的数据
+def get_ot_data(name) -> list:
+    data_frame = pd.read_excel(select_path_ot.get())
+    ot_list = list()
+    for row_index in range(data_frame.shape[0]):
+        if data_frame.iloc[row_index, 0] == name:
+            
+            each_date = list()
+
+            date = data_frame.iloc[row_index, 4] # 加班日期
+            data_arr = date.split("-")
+            each_date.append(int(data_arr[2]))
+
+            hour = data_frame.iloc[row_index, 8] # 加班时长
+            each_date.append(float(hour))
+
+            ot_type = data_frame.iloc[row_index, 21] # 加班类型
+            each_date.append(ot_type)
+
+            ot_list.append(each_date)
+
+    return ot_list
+
 
 # 获取上个月加班调休明细表的剩余加班小时数
 def get_remaining_hours(name) -> list:
@@ -278,6 +302,15 @@ def generate_excel():
                         sheet.cell(row=4 + key, column=name_column_index + 4).value = float(val)
 
                 # 填入每个人的加班时间
+                ot_list = get_ot_data(name_iloc)
+                if len(ot_list) > 0: # 该员工有加班
+                    for each_ot_data in ot_list:
+                        if each_ot_data[2] == '节假日': # 法定加班
+                            sheet.cell(row=4 + each_ot_data[0], column=name_column_index + 2).value = each_ot_data[1]
+                        if each_ot_data[2] == '公休日': # 周末加班
+                            sheet.cell(row=4 + each_ot_data[0], column=name_column_index + 3).value = each_ot_data[1]
+                        if each_ot_data[2] == '工作日': # 平时加班
+                            sheet.cell(row=4 + each_ot_data[0], column=name_column_index + 1).value = each_ot_data[1]
 
                 '''
                 rest_hours = 0 #一个员工当月的调休小时数
@@ -308,6 +341,9 @@ def generate_excel():
                 name_column_index = name_column_index + 4
                 name_row_index = name_row_index + 1
 
+ 
+        recalculate_left_hours(sheet)
+   
 
         selected_type = type_combo.get()
         content = f"{selected_type}{selected_year}年{selected_month}月加班调休明细表"
@@ -318,90 +354,84 @@ def generate_excel():
         global file_name
         file_name = f"{content}.xlsx"
         workbook.save(file_name)
-
+        
         messagebox.showinfo("提示", f"生成文件【{file_name}】成功")
-        button2.config(state=tk.ACTIVE)
-    except Exception as e:
-        print(e)
-        messagebox.showerror("错误", "生成文件失败，请检查选择的文件内容是否正确!原因：" + repr(e))
+     
+    # except Exception as e:
+    #     print(e)
+    #     messagebox.showerror("错误", "生成文件失败，请检查选择的文件内容是否正确!原因：" + repr(e))
 
     finally:
         workbook.close()
+       
 
-def recalculate_left_hours():
-    try:
- 
-        root = os.getcwd()   
-        # 需要先打开保存一遍Excel文件才能不到有公式的单元格
-        xlApp = Dispatch("Excel.Application")
-        xlApp.Visible = False
-        xlApp.DisplayAlerts = 0
-        xlBook = xlApp.Workbooks.Open(os.path.join(root, file_name))
-        xlBook.Save()
-        xlBook.Close()
-     
-
-        # 读Excel文件用来取数据
-        workbook = load_workbook(file_name,read_only=True,data_only=True)
-        sheet = workbook.active
-        # workbook.close()
-
-        # 读Excel文件用来写数据
-        write_workbook = load_workbook(file_name)
-        write_sheet = write_workbook.active
-
-        # print(sheet.max_row)
-        # print(sheet.max_column)
-        # 把本月剩余的加班小时数抄过来
-        continue_count = 0
-        for col_iter_index in range(3,sheet.max_column + 1):
-            continue_count = continue_count + 1
-            if continue_count % 4 == 0:
-                continue
-            current_total_hours = sheet.cell(row = sheet.max_row - 4,column = col_iter_index).value
-            # print(f'********{current_total_hours}******')
-            if current_total_hours is not None and float(current_total_hours) > 0:
-                write_sheet.cell(row = write_sheet.max_row - 2,column = col_iter_index).value = current_total_hours
-        
-        # 计算每个员工的剩余加班小时数
-        employees_count = (sheet.max_column - 3) / 4 # 员工数量
-        start_col_index = 3 # 从第三列开始
-        for _ in range(0,int(employees_count)):
-            hours_data = list() # 员工的小时数数据
-            for j in range(0,4):
-                earch_hour = sheet.cell(row = sheet.max_row - 3,column = start_col_index + j).value
-                hours_data.append(earch_hour if earch_hour is not None else "")
-                if j == 3:
-                    rest_hour = sheet.cell(row = sheet.max_row - 4,column = start_col_index + j).value
-                    hours_data.append(rest_hour if rest_hour is not None else "")
-            
-            # 根据调休时间计算一个员工的剩余加班时间
-            hours_data = cal_remaining_hours(0,hours_data)
-            print(hours_data)
+def recalculate_left_hours(write_sheet):
    
-            if float(hours_data[4]) > 0: # 上个月剩余的加班小时数不够扣调休小时数
-                for l in range(0,4):
-                    earch_hour = sheet.cell(row = sheet.max_row - 4,column = start_col_index + l).value
-                    hours_data[l] = earch_hour if earch_hour is not None else ""
-                hours_data = cal_remaining_hours(0,hours_data) # 用本月的加班小时数扣调休小时数
-                for n in range(0,3):
-                    if len(hours_data[n]) > 0 and float(hours_data[n]) > 0:
-                        write_sheet.cell(row = write_sheet.max_row - 2,column = start_col_index + n).value = str(hours_data[n])
-            else: # 上个月剩余的加班小时数够扣调休小时数,直接更新本月剩余加班小时数
-                for m in range(0,3):
-                    write_sheet.cell(row = write_sheet.max_row - 3,column = start_col_index + m).value = str(hours_data[m])
-            
+    # 读Excel文件用来取数据
+    # workbook = load_workbook(file_name,read_only=True,data_only=True)
+    # sheet = workbook.active
+    # workbook.close()
 
-            start_col_index = start_col_index + 4
+    # 读Excel文件用来写数据
+    # write_workbook = load_workbook(file_name)
+    # write_sheet = write_workbook.active
 
-        write_workbook.save(file_name)
-        messagebox.showinfo("提示", "计算剩余小时数成功")
+    # print(sheet.max_row)
+    # print(sheet.max_column)
+    # 把本月剩余的加班小时数抄过来
+    continue_count = 0
+    for col_iter_index in range(3,write_sheet.max_column + 1):
+        continue_count = continue_count + 1
+        if continue_count % 4 == 0: # 调休数据直接跳过
+            continue
+        current_total_hours = write_sheet.cell(row = write_sheet.max_row - 4,column = col_iter_index).value
+        current_total_hours = current_total_hours.replace("=SUM(","").replace(")","")
+        # print(f'********{current_total_hours}******')
 
-    except Exception as e:
-        messagebox.showerror("错误", "计算剩余小时数失败，原因：" + repr(e))
-        # raise e
-    finally:
-        write_workbook.close()
+        sum_value = sum(cell.value for row in write_sheet[current_total_hours] for cell in row if cell.value is not None)
+        if sum_value is not None:
+            write_sheet.cell(row = write_sheet.max_row - 2,column = col_iter_index).value = sum_value
+    
+    # 计算每个员工的剩余加班小时数
+    employees_count = (write_sheet.max_column - 3) / 4 # 员工数量
+    start_col_index = 3 # 从第三列开始
+    for _ in range(0,int(employees_count)):
+        hours_data = list() # 员工的小时数数据
+        for j in range(0,4):
+            earch_hour = write_sheet.cell(row = write_sheet.max_row - 3,column = start_col_index + j).value
+            hours_data.append(earch_hour if earch_hour is not None else "")
+            if j == 3:
+                rest_hour = write_sheet.cell(row = write_sheet.max_row - 4,column = start_col_index + j).value
+                rest_hour = rest_hour.replace("=SUM(","").replace(")","")
+                total_hours_data = sum(cell.value for row in write_sheet[rest_hour] for cell in row if cell.value is not None)
+                hours_data.append(str(total_hours_data) if total_hours_data is not None else "")
+        
+        # 根据调休时间计算一个员工的剩余加班时间
+        hours_data = cal_remaining_hours(0,hours_data)
+        print(hours_data)
+
+        if float(hours_data[4]) > 0: # 上个月剩余的加班小时数不够扣调休小时数
+            for l in range(0,4):
+                earch_hour = write_sheet.cell(row = write_sheet.max_row - 4,column = start_col_index + l).value
+                earch_hour = earch_hour.replace("=SUM(","").replace(")","")
+                total_earch_hour = sum(cell.value for row in write_sheet[earch_hour] for cell in row if cell.value is not None)
+                hours_data[l] = str(total_earch_hour) if total_earch_hour is not None else ""
+            hours_data = cal_remaining_hours(0,hours_data) # 用本月的加班小时数扣调休小时数
+            for n in range(0,3):
+                if len(hours_data[n]) > 0 and float(hours_data[n]) > 0:
+                    write_sheet.cell(row = write_sheet.max_row - 2,column = start_col_index + n).value = str(hours_data[n])
+        else: # 上个月剩余的加班小时数够扣调休小时数,直接更新本月剩余加班小时数
+            for m in range(0,3):
+                write_sheet.cell(row = write_sheet.max_row - 3,column = start_col_index + m).value = str(hours_data[m])
+        
+
+        start_col_index = start_col_index + 4
+
+    # write_workbook.save(file_name)
+    # messagebox.showinfo("提示", "计算剩余小时数成功")
+
+
+  
 
 '''
  递归用剩余加班小时数减去调休小时数
@@ -460,6 +490,11 @@ def get_days_of_month(year, month):
                 days_of_month.append(day_info)
     return days_of_month
 
+def button1_click():
+    generate_excel()
+    recalculate_left_hours()
+
+
 if __name__ == '__main__':
    
     years = list(range(2024,2055))
@@ -475,7 +510,7 @@ if __name__ == '__main__':
     month_combo.configure(state="readonly")
     month_combo.grid(column=1, row=0)
     
-    types = ["工程", "客服", "保安"]
+    types = ["工程部", "客服部", "保安"]
     type_combo = ttk.Combobox(root, values=types,width=5)
     type_combo.current(0)  
     type_combo.configure(state="readonly")
@@ -504,8 +539,7 @@ if __name__ == '__main__':
     description = '''
     1、选择正确的年/月/部门。
     2、根据按钮提示选择正确的Excel文件。
-    3、先点击“1、生成加班调休明细表”按钮，然后打开生成的明细表Excel文件（如：工程2024年8月加班调休明细表.xlsx）,填上每个员工每一天的加班/调休小时数。（注意：最后三行汇总小时数不要修改，程序会自动计算）
-    4、关闭上一步打开的明细表Excel文件，再点击“2、计算剩余加班小时数”，最后文件的数据即是正确的数据。
+    3、点击“1、生成加班调休明细表”按钮，然后打开生成的明细表Excel文件（如：工程2024年8月加班调休明细表.xlsx）,文件的数据即是正确的数据。
     '''
     text = tk.Text(root, font=("Helvetica", 10), fg="blue",width=50,height=10)# 设定文本内容、字体、字号、字体颜色 
     text.grid(row=5, column=0, sticky="EWNS",pady=20) # sticky选项使其在水平和垂直方向上扩展
@@ -516,9 +550,9 @@ if __name__ == '__main__':
     button1.grid(row=5, column=1, pady=20)  # 使Button在row=1, column=1的位置
     button1.config(state=tk.DISABLED)
     
-    button2 = tk.Button(root, text="2、计算剩余加班小时数",command=recalculate_left_hours)
-    button2.grid(row=6, column=1, pady=10)
-    button2.config(state=tk.DISABLED)
+    # button2 = tk.Button(root, text="2、计算剩余加班小时数",command=recalculate_left_hours)
+    # button2.grid(row=6, column=1, pady=10)
+    # button2.config(state=tk.DISABLED)
 
     root.mainloop()
  
