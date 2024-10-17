@@ -352,9 +352,9 @@ def generate_excel():
         
         messagebox.showinfo("提示", f"生成文件【{file_name}】成功")
      
-    # except Exception as e:
-    #     print(e)
-    #     messagebox.showerror("错误", "生成文件失败，请检查选择的文件内容是否正确!原因：" + repr(e))
+    except Exception as e:
+        print(e)
+        messagebox.showerror("错误", "生成文件失败，请检查选择的文件内容是否正确!原因：" + repr(e))
 
     finally:
         workbook.close()
