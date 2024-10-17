@@ -10,7 +10,7 @@ from openpyxl.utils import get_column_letter
 import re
 
 root = tk.Tk()
-root.geometry("580x350+50+50") # widthxheight+x+y
+root.geometry("580x300+50+50") # widthxheight+x+y
 root.title("工程部/客服部/保安考勤记录生成器")
 root.resizable(False,False)
 
@@ -540,9 +540,9 @@ if __name__ == '__main__':
     description = '''
     1、选择正确的年/月/部门。
     2、根据按钮提示选择正确的Excel文件。
-    3、点击“1、生成加班调休明细表”按钮，然后打开生成的明细表Excel文件（如：工程2024年8月加班调休明细表.xlsx）,文件的数据即是正确的数据。
+    3、点击“1、生成加班调休明细表”按钮，然后打开生成的明细表Excel文件（如：工程部2024年9月加班调休明细表.xlsx）,文件的数据即是正确的数据。
     '''
-    text = tk.Text(root, font=("Helvetica", 10), fg="blue",width=50,height=10)# 设定文本内容、字体、字号、字体颜色 
+    text = tk.Text(root, font=("Helvetica", 10), fg="blue",width=50,height=7)# 设定文本内容、字体、字号、字体颜色 
     text.grid(row=5, column=0, sticky="EWNS",pady=20) # sticky选项使其在水平和垂直方向上扩展
     text.insert("insert",description)
     text['state'] = 'disabled'
