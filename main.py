@@ -24,12 +24,14 @@ def select_file():
     select_path.set(selected_file_path)
     if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
         button1.config(state=tk.ACTIVE)
+    messagebox.showwarning("选择的文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
 
 def select_file_lastmonth():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path_lastmonth.set(selected_file_path)
     if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
         button1.config(state=tk.ACTIVE)
+    messagebox.showwarning("选择的文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
 
     # print(get_remaining_hours("李琦琛"))
 
@@ -41,12 +43,14 @@ def select_file_dayoff():
     # print(result)
     if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
         button1.config(state=tk.ACTIVE)
+    messagebox.showwarning("选择的文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
 
 def select_file_ot():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path_ot.set(selected_file_path)
     if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
         button1.config(state=tk.ACTIVE)
+    messagebox.showwarning("选择的文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
 
 # 根据姓名获取调休记录表的数据
 def get_dayoff_data(name) -> dict:
@@ -123,6 +127,7 @@ def get_remaining_hours(name) -> list:
     # print(result_list)
     return result_list
 
+# 生成调休加班明细表
 def generate_excel():
     try:
         selected_month = month_combo.get().replace('月','')
@@ -359,7 +364,7 @@ def generate_excel():
     finally:
         workbook.close()
        
-
+# 根据调休小时数计算剩余加班小时数
 def recalculate_left_hours(write_sheet):
    
     # 读Excel文件用来取数据
@@ -417,7 +422,6 @@ def recalculate_left_hours(write_sheet):
             hours_data = cal_remaining_hours(0,hours_data) # 用本月的加班小时数扣调休小时数
             # print(f"{employee_name}+++修改后+++{hours_data}")
             for n in range(0,3):
-                # if len(hours_data[n]) > 0 and float(hours_data[n]) > 0:
                 write_sheet.cell(row = write_sheet.max_row - 2,column = start_col_index + n).value = str(hours_data[n])
         else: # 上个月剩余的加班小时数够扣调休小时数,直接更新本月剩余加班小时数
             for m in range(0,3):
