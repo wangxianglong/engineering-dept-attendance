@@ -7,8 +7,6 @@ from openpyxl import Workbook,load_workbook
 from openpyxl.styles import Alignment,PatternFill,Border, Side,Font
 from openpyxl.worksheet.dimensions import ColumnDimension,DimensionHolder
 from openpyxl.utils import get_column_letter
-from win32com.client import Dispatch
-import os
 import re
 
 root = tk.Tk()
@@ -154,10 +152,7 @@ def generate_excel():
         sheet.cell(row=4, column=2).border = border
 
         df = pd.read_excel(select_path.get()) # 排班表的数据
-        print(df)
-
-        # df_dayoff = pd.read_excel(select_path_dayoff.get()) # 当月调休记录数据
-        # df_ot = pd.read_excel(select_path_ot.get()) # 当月加班记录数据
+        # print(df)
 
         day_array = list() # 记录每一天分别是星期几
         
@@ -408,7 +403,9 @@ def recalculate_left_hours(write_sheet):
         
         # 根据调休时间计算一个员工的剩余加班时间
         hours_data = cal_remaining_hours(0,hours_data)
-        print(hours_data)
+        
+        # employee_name = write_sheet.cell(row = 3,column = start_col_index).value
+        # print(f"{employee_name}+++原始+++{hours_data}")
 
         if float(hours_data[4]) > 0: # 上个月剩余的加班小时数不够扣调休小时数
             for l in range(0,4):
@@ -416,10 +413,12 @@ def recalculate_left_hours(write_sheet):
                 earch_hour = earch_hour.replace("=SUM(","").replace(")","")
                 total_earch_hour = sum(cell.value for row in write_sheet[earch_hour] for cell in row if cell.value is not None)
                 hours_data[l] = str(total_earch_hour) if total_earch_hour is not None else ""
+            # print(f"{employee_name}+++修改前+++{hours_data}")    
             hours_data = cal_remaining_hours(0,hours_data) # 用本月的加班小时数扣调休小时数
+            # print(f"{employee_name}+++修改后+++{hours_data}")
             for n in range(0,3):
-                if len(hours_data[n]) > 0 and float(hours_data[n]) > 0:
-                    write_sheet.cell(row = write_sheet.max_row - 2,column = start_col_index + n).value = str(hours_data[n])
+                # if len(hours_data[n]) > 0 and float(hours_data[n]) > 0:
+                write_sheet.cell(row = write_sheet.max_row - 2,column = start_col_index + n).value = str(hours_data[n])
         else: # 上个月剩余的加班小时数够扣调休小时数,直接更新本月剩余加班小时数
             for m in range(0,3):
                 write_sheet.cell(row = write_sheet.max_row - 3,column = start_col_index + m).value = str(hours_data[m])
@@ -429,8 +428,10 @@ def recalculate_left_hours(write_sheet):
 
     # write_workbook.save(file_name)
     # messagebox.showinfo("提示", "计算剩余小时数成功")
-
-
+    for col_iter_index in range(3,write_sheet.max_column + 1):
+        current_last_hour = write_sheet.cell(row = write_sheet.max_row - 2,column = col_iter_index).value
+        if current_last_hour is not None and float(current_last_hour) == 0:
+            write_sheet.cell(row = write_sheet.max_row - 2,column = col_iter_index).value = ""
   
 
 '''
