@@ -24,14 +24,14 @@ def select_file():
     select_path.set(selected_file_path)
     if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
         button1.config(state=tk.ACTIVE)
-    messagebox.showwarning("选择的文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
+    messagebox.showwarning("本月排班表文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
 
 def select_file_lastmonth():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path_lastmonth.set(selected_file_path)
     if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
         button1.config(state=tk.ACTIVE)
-    messagebox.showwarning("选择的文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
+    messagebox.showwarning("上个月加班调休明细表文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
 
     # print(get_remaining_hours("李琦琛"))
 
@@ -43,14 +43,14 @@ def select_file_dayoff():
     # print(result)
     if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
         button1.config(state=tk.ACTIVE)
-    messagebox.showwarning("选择的文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
+    messagebox.showwarning("本月调休记录表文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
 
 def select_file_ot():
     selected_file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx *.xls")])
     select_path_ot.set(selected_file_path)
     if len(select_path.get()) > 0 and len(select_path_lastmonth.get()) > 0 and len(select_path_dayoff.get()) > 0 and len(select_path_ot.get()) > 0:
         button1.config(state=tk.ACTIVE)
-    messagebox.showwarning("选择的文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
+    messagebox.showwarning("本月加班记录表文件是", f'{selected_file_path}\n\n如果文件不正确可重新选择')
 
 # 根据姓名获取调休记录表的数据
 def get_dayoff_data(name) -> dict:
