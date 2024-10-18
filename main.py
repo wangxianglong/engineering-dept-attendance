@@ -158,8 +158,6 @@ def generate_excel():
 
         df = pd.read_excel(select_path.get()) # 排班表的数据
         # print(df)
-
-        day_array = list() # 记录每一天分别是星期几
         
         # 生成日期数据
         for column_index in range(1,32):
@@ -173,7 +171,7 @@ def generate_excel():
                 sheet.cell(row=row_index, column=2).border = border
 
                 day_iloc = df.iloc[2, column_index]  #取星期几数据
-                day_array.append(day_array)
+       
                 sheet.cell(row=row_index, column=1).value = day_iloc
                 sheet.cell(row=row_index, column=1).alignment = Alignment(horizontal="center",vertical="center")
                 sheet.cell(row=row_index, column=1).border = border
@@ -225,9 +223,9 @@ def generate_excel():
         name_row_index = 3
         name_column_index = 2
     
-        while True:
-            name_iloc = df.iloc[name_row_index, 0]
-            if name_iloc == "排班说明":
+        while True: 
+            name_iloc = df.iloc[name_row_index, 0] # 循环获取员工姓名
+            if name_iloc == "排班说明": # 表示已经读取完员工姓名
                 break
             else: # 一个员工的数据
                 sheet.cell(row=3, column=name_column_index + 1).value = name_iloc
