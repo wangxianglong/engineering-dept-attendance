@@ -10,7 +10,7 @@ from openpyxl.utils import get_column_letter
 import re
 
 root = tk.Tk()
-root.geometry("580x300+50+50") # widthxheight+x+y
+root.geometry("580x350+50+50") # widthxheight+x+y
 root.title("工程部/客服部/保安考勤记录生成器")
 root.resizable(False,False)
 
@@ -540,11 +540,12 @@ if __name__ == '__main__':
     tk.Button(root, text="选择本月加班记录表", command=select_file_ot).grid(row=4, column=1)
 
     description = '''
-    1、选择正确的年/月/部门。
-    2、根据按钮提示选择正确的Excel文件。
-    3、点击“1、生成加班调休明细表”按钮，然后打开生成的明细表Excel文件（如：工程部2024年9月加班调休明细表.xlsx）,文件的数据即是正确的数据。
+    1、确保排班表的数据正确，有效数据必须从第三行第一列开始，第一列i必须是人名，第二列往后必须是日期，第一列人名结束的下一行的单元格必须是“排班说明”。
+    2、选择正确的年/月/部门。
+    3、根据按钮提示选择正确的Excel文件。
+    4、点击“1、生成加班调休明细表”按钮，然后打开生成的明细表Excel文件（如：工程部2024年9月加班调休明细表.xlsx）,文件的数据即是正确的数据。
     '''
-    text = tk.Text(root, font=("Helvetica", 10), fg="blue",width=50,height=7)# 设定文本内容、字体、字号、字体颜色 
+    text = tk.Text(root, font=("Helvetica", 10), fg="blue",width=50,height=10)# 设定文本内容、字体、字号、字体颜色 
     text.grid(row=5, column=0, sticky="EWNS",pady=20) # sticky选项使其在水平和垂直方向上扩展
     text.insert("insert",description)
     text['state'] = 'disabled'
